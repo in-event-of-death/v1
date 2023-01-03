@@ -1,0 +1,392 @@
+<html>
+  <head>
+    <title>Crypto test</title>
+  </head>
+
+  <script>
+    const large_primes = {
+        '6144': 27322052264104655861400818625895739654685477554826524679792026738754122220380511438339944106961637040793725280215800716381496668776752693326830296769220814390920245572522443487340023818746664748915258432280236761826174095959960275111309248890001057724297198282946508759821401819314930790341102012462960633997713885651819568388398695164955135426939874410245680599717584687234789093192982601142543049994455430191519083313400637113232929083598625381764262518180155040092149584940075560815384021169239192643469752937422155100737882216571747467883325932675103193615220851242805922054990514279884089441982540910521167503943976667483287955121976867078292157406429001021152454912499600934736020762984787628624394212157440831544670637090010733509454390804386326692137929439481287992840008268862362129093150888434364632981690378179056920818887936762708502213590636058169652723826969907527209612926232878110573241960118242777684934368488823371543242472508148893903931475976852778800935257836878044358817919613664964128635433765674577022531941967567046792184615974494283837554355291719273647759791745543196701870835078362996288636404554040877620963492616589948969674377637697017822049422859398350295396213126838342352038294438863785785965087229178419799259552701432956498283521600931650664048313199358697291493715370427944030887169645537937863883460737778953905911888098918493570017000111635315956405999740708517849365569838821154740123475069512138072349027979677684319661908884153163410254816479441406649041625436480655329755420007768187784183169370876746044924805044448454454379833182087399559734454108592699538085057337419847285316366279667816150705569595759757583783829276659314230979478463803378118547344981083307521117773175027567727271832694991086195837991631259211701912348602475899043515299103087874624411122017022243158804321645303871984840122933412767n
+    };
+
+    //const encoding_string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&()*+,./:;<=>?@[]^_`{|}~"';
+    // this is used to encode big nums into json, so it isn't printed directly
+    const encoding_string = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
+    const base58_encoding = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+    function encode_bigint(x) {
+        let r = '', l = BigInt(encoding_string.length);
+        while(x > 0) {
+            r += encoding_string[x % l];
+            x = x / l;
+        }
+        return r;
+    }
+
+    function decode_bigint(x) {
+        let r = 0n, l = BigInt(encoding_string.length);
+        for(let i = x.length - 1; i >= 0; i--) {
+            r = r * l + BigInt(encoding_string.indexOf(x[i]));
+        }
+        return r;
+    }
+
+    function uint8ToBigint(x) {
+        let a = 0n;
+        for(let i = x.length - 1; i >= 0; i--) {
+            a = (a << 8n) + BigInt(x[i]);
+        }
+        return a;
+    }
+
+    function bigintToUint8(a) {
+        let num_bytes = 1;
+        while(a > (1n << BigInt(num_bytes*8)))
+            num_bytes++;
+        let r = new Uint8Array(num_bytes);
+        for(let i = 0; i < num_bytes; i++) {
+            r[i] = Number(a & 255n);
+            a = a >> 8n;
+        }
+        return r;
+    }
+
+    function extended_gcd(a, b) {
+        if(a == 0n) {
+            return [b, 0n, 1n];
+        } else {
+            let [g, y, x] = extended_gcd(b % a, a);
+            return [g, x - (b / a) * y, y];
+        }
+    }
+
+    function inverse(v, mod) {
+        if(v < 0n) {
+            return mod - inverse(-v, mod);
+        } else {
+            let [g, x, y] = extended_gcd(v, mod);
+            if(g != 1n) alert('no inverse');
+            if(x < 0n)
+                return (mod + x) % mod;
+            else
+                return x % mod;
+        }
+    }
+
+    // for implementing Shamir's Secret Sharing
+    function evaluatePolynomialAtPoint(poly, mod, x) {
+        let r = 0n;
+        for(let i = 0; i < poly.length; i++) {
+            let p = 1n;
+            let d = 1n;
+            for(let k = 0; k < poly.length; k++) {
+                if(k != i) {
+                    p = (p * (x - poly[k][0])) % mod;
+                    d = d * (poly[i][0] - poly[k][0]) % mod;
+                }
+            }
+            r = (r + poly[i][1] * p * inverse(d, mod)) % mod;
+        }
+        if(r < 0n) r += mod;
+        return r;
+    }
+
+    function is_key(x) {
+        return ('x' in x) && ('y' in x) && ('fingerprint' in x) && ('mod' in x) && ('required' in x) && ('name' in x) && ('version' in x) && x.version == 1;
+    }
+
+    async function generate_key() {
+        const num_pub_generate = document.getElementById("number_private_generate").value * 1;
+        const num_required = document.getElementById("number_private_required").value * 1;
+        const name = document.getElementById("user_name").value
+
+        if(num_pub_generate < num_required) {
+            alert('The number of public keys that are to be generated is less than the number of public keys which will be required for decryption\nThis will not work');
+            return;
+        }
+
+        const { privateKey, publicKey } = await openpgp.generateKey({
+            type: 'ecc', // Type of the key, defaults to ECC
+            curve: 'curve25519', // ECC curve name, defaults to curve25519
+            userIDs: [{ name: "Key for "+name+" in the event of death",  email: name.replace(/[^A-Za-z0-9]/g, '-')+"@in-event-of-death.none" }],
+            format: 'object'
+            //format: 'armored' // output key format, defaults to 'armored' (other options: 'binary' or 'object')
+        });
+        const pk = publicKey.armor();
+        const priv = privateKey.write();
+        const fingerprint = publicKey.getFingerprint();
+        //debugger;
+
+
+        document.getElementById("num_required_span").value = num_required;
+        //document.getElementById("private_key").value = privateKey;
+        document.getElementById("public_key_gen").value = pk;
+        document.getElementById("public_key_gen").rows = pk.split('\n').length + 1;
+        document.getElementById("public_key").value = pk;
+
+        let poly_values = [[0n, uint8ToBigint(priv)]];
+        for(let i = 1; i < num_required; i++) {
+            let arr = new Uint8Array(priv.length);
+            crypto.getRandomValues(arr);
+            poly_values.push([BigInt(i), uint8ToBigint(arr)]);
+        }
+
+        let mod = large_primes['6144'];
+        let pk_list = document.getElementById('private_keys');
+        pk_list.innerHTML = '';
+
+        let testp = [];
+
+        for(let i = 0; i < num_pub_generate; i++) {
+            let x = BigInt(i)*1191531196035921311916814842367n + 1196999169309667173465223891789n + BigInt(num_required);
+            if(x == 0n) x = 123n; // zero encodes the secret key, so we do not want to generate its value
+            let y = evaluatePolynomialAtPoint(poly_values, mod, x);
+            let k = {
+                'y': encode_bigint(y),
+                'id': i,
+                'x': encode_bigint(x),
+                'required': num_required,
+                'fingerprint': fingerprint,
+                 'mod': encode_bigint(mod),
+                'name': name,
+                'version': 1,
+            };
+            if(testp.length < num_required)
+                testp.push([decode_bigint(k.x), decode_bigint(k.y)]);
+            let s = btoa(JSON.stringify(k));
+            let inp = document.createElement('input');
+            inp.type = 'text';
+            inp.size = 80;
+            inp.readOnly = true;
+            inp.value = s;
+            inp.name = 'gen_decrypt_key';
+            inp.onclick = function () { this.select(); }
+            let li = document.createElement('li');
+            li.appendChild(inp);
+            pk_list.appendChild(li);
+        }
+
+        let rr = evaluatePolynomialAtPoint(testp, mod, 0n);
+
+        debugger;
+    }
+
+    async function encrypt() {
+        const publicKey = document.getElementById("public_key").value;
+
+        const encrypted = await openpgp.encrypt({
+            message: await openpgp.createMessage({ text: document.getElementById("to_encrypt").value }),
+            encryptionKeys: await openpgp.readKey({ armoredKey: publicKey }),
+            format: 'armored'
+        });
+
+        document.getElementById("encrypted").value = encrypted;
+    }
+
+    async function decrypt() {
+        let private_keys = [];
+        let has_x = {};
+        let keys = document.getElementsByName('decrypt_key');
+        for(let i = 0; i < keys.length; i++) {
+            try {
+                let k = JSON.parse(atob(keys[i].value.replace(/[^a-zA-Z0-9=\+\/]/g, '')));
+                if(!is_key(k) || k.x in has_x) {
+                    keys[i].value = ''; // this is redudant
+                } else {
+                    private_keys.push(k);
+                    has_x[k.x] = true;
+                }
+            } catch (e) {
+                keys[i].value = ''; // this was not loaded correctly
+            }
+        }
+        if(private_keys.length == 0) {
+            alert('Private keys are entered incorrectly');
+            return;
+        }
+
+        for(let i = 1; i < private_keys.length; i++) {
+            if(private_keys[i].fingerprint != private_keys[0].fingerprint) {
+                alert('Private keys have been mixed up with different encryption keys');
+                return;
+            }
+        }
+
+        if(private_keys.length < private_keys[0].required) {
+            alert('Not enough private keys, require '+private_keys[0].required+' keys to decrypt the data');
+            return;
+        }
+
+        let poly_values = [];
+        for(let i = 0; i < private_keys[0].required; i++) {
+            poly_values.push([decode_bigint(private_keys[i].x), decode_bigint(private_keys[i].y)]);
+        }
+
+        let mod = decode_bigint(private_keys[0].mod);
+
+        let private_key = bigintToUint8(evaluatePolynomialAtPoint(poly_values, mod, 0n));
+
+        let pkey = await openpgp.readPrivateKey({ binaryKey: private_key });
+
+        let message = await openpgp.readMessage({
+            armoredMessage: document.getElementById('to_decrypt').value
+        });
+
+        let { data: decrypted } = await openpgp.decrypt({
+            message,
+            decryptionKeys: pkey
+        });
+
+        document.getElementById('decrypted').value = decrypted;
+    }
+
+    function add_decrypt_key() {
+        let d = document.getElementById('decryption_keys');
+        let inp = document.createElement('input');
+        inp.type = 'text';
+        inp.size = 80;
+        inp.onchange = on_decrypt_key_change;
+        inp.name = 'decrypt_key';
+        let li = document.createElement('li');
+        li.appendChild(inp);
+        d.appendChild(li);
+    }
+
+    function on_decrypt_key_change() {
+        let private_keys = [];
+        let has_x = {};
+        let keys = document.getElementsByName('decrypt_key');
+        let has_invalid = false;
+        for(let i = 0; i < keys.length; i++) {
+            try {
+                let v = keys[i].value;
+                if(v) {
+                    let k = JSON.parse(atob(v.replace(/[^a-zA-Z0-9=\+\/]/g, '')));
+                    if(is_key(k) && !(k.x in has_x)) {
+                        private_keys.push(k);
+                        has_x[k.x] = true;
+                    }
+                }
+            } catch (e) {
+                has_invalid = true;
+            }
+        }
+        if(private_keys.length == 0) {
+            document.getElementById('decrypt_key_status').innerHTML = has_invalid ? '<span style="color:red"><b>Encryption key is corrupted</b></span>' : '';
+            return;
+        }
+        let message = 'Decryption keys for <i>'+private_keys[0].name+'</i> loaded';
+        let error = '';
+
+        for(let i = 1; i < private_keys.length; i++) {
+            if(private_keys[i].fingerprint != private_keys[0].fingerprint) {
+                error = '<br><span style="color:red"><b>Different encryption keys are mixed together.  This will not work</b></span>';
+                break;
+            }
+        }
+        if(!error && private_keys.length < private_keys[0].required) {
+            error = '<br><span style="color:red"><b>'+private_keys.length+' decryption '+(private_keys.length==1 ? 'key' : 'keys')+' loaded, '+(private_keys[0].required-private_keys.length)+' additional '+(private_keys[0].required-private_keys.length==1 ? 'key' : 'keys')+' required</b></span>';
+            for(let i = keys.length; i < private_keys[0].required; i++)
+                add_decrypt_key();
+        }
+
+        if(!error) {
+            error = '<br><span style="color:green">Ready to decrypt</span>';
+        }
+
+        document.getElementById('decrypt_key_status').innerHTML = '<p>' + message + error + '</p>';
+    }
+
+    window.onload = on_decrypt_key_change;
+
+    async function example() {
+        await generate_key();
+        await encrypt();
+        const num_required = document.getElementById("number_private_required").value * 1;
+        while(document.getElementsByName('decrypt_key').length < num_required)
+            add_decrypt_key();
+        const genk = document.getElementsByName('gen_decrypt_key');
+        const deck = document.getElementsByName('decrypt_key');
+        for(let i = 0; i < num_required; i++) {
+            deck[i].value = genk[i].value;
+        }
+        on_decrypt_key_change();
+        document.getElementById('to_decrypt').value = document.getElementById('encrypted').value;
+        await decrypt();
+    }
+  </script>
+
+  <body>
+    <a name="description" /><h1>Description</h1>
+
+    <button type="button" onclick="example()">Show Example</button>
+
+    <hr>
+    <a name="generate" /><h1>Generate Key</h1>
+
+    <p>Name: <input type="text" value="John Doe" id="user_name"></p>
+    <p>Number of private keys to generate: <input type="number" value="6" id="number_private_generate"></p>
+    <p>Number of private keys required to descrypt: <input type="number" value="2" id="number_private_required"></p>
+    <p><button type="button" onclick="generate_key()">Generate Encryption Key</button></p>
+
+    <br>
+
+    <p>Public key used for encryption: <br>
+      <textarea id="public_key_gen" readonly cols=60 rows=10 autocomplete="off"></textarea>
+    </p>
+
+
+    <p>
+      Private keys for decryption:<br>
+      These keys should be distributed such that 1 key is provide to each individual.  As you have configured above, it is required that any <b><span id="num_required_span">2</span></b> keys are required to decrypt your data.<br>
+      <ol id="private_keys">
+        <li><input type="text" size=80 readonly /></li>
+        <li><input type="text" size=80 readonly /></li>
+      </ol>
+    </p>
+
+    <hr>
+    <a name="encrypt" /><h1>Encrypt</h1>
+
+    <p>Public Key used for Encryption:<br>
+      <textarea id="public_key" cols=60 rows=10 autocomplete="off"></textarea>
+    </p>
+
+    <p>Message to Encrypt: <br>
+      <textarea id="to_encrypt" cols=60 rows=10  autocomplete="off">Example message to encrypt</textarea>
+    </p>
+    <p><button type="button" onclick="encrypt()">Encrypt message</button></p>
+
+    <p>Encrypted data: <br>
+      <textarea id="encrypted" readonly cols=60 rows=10  autocomplete="off"></textarea>
+    </p>
+
+
+    <hr>
+    <a name="decrypt" /><h1>Decrypt</h1>
+
+    <p>Decryption Keys:
+      <ol id="decryption_keys">
+        <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
+        <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
+      </ol>
+      <button type="button" onclick="add_decrypt_key()">Add addition decryption Key <b>+</b></button><br>
+      <div id="decrypt_key_status"></div>
+    </p>
+
+    <p>Encrypted message:<br>
+      <textarea autocomplete="off" id="to_decrypt" cols=60 rows=10 onfocus="this.value='';">-----BEGIN PGP MESSAGE-----
+Paste your encrypted message here
+....
+-----END PGP MESSAGE-----
+</textarea>
+    </p>
+
+    <p><button type="button" onclick="decrypt()">Decrypt message</button></p>
+
+    <p>Decrypted message:<br>
+      <textarea autocomplete="off" id="decrypted" readonly cols=60 rows=10></textarea>
+    </p>
+
+    <script src="openpgp.min.js"></script>
+  </body>
+</html>
