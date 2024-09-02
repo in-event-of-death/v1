@@ -458,9 +458,9 @@ https://github.com/openpgpjs/openpgpjs
   <body>
     <div id="content">
       <center><a name="description"></a><h1>Encrypted Messages for the Event of Death</h1></center>
-      <noscript><div style="font-size:50px; color:red; text-align:center;">Javascript is required!!!</div></noscript>
+      <noscript><div style="font-size:50px; color:red; text-align:center;">JavaScript is required!!!</div></noscript>
       <p>
-        This webpage encrypt messages that can be passed along in the event of death.  This is done by <i>splitting</i> your decryption key into multiple parts.  Your encrypted messages can only be decrypted once <i>enough</i> of the decryption keys are combined back together.  For example, you can generate 10 different decryption keys such that any 3 decryption keys can be used to decrypt your message.  This means that your message can only be decrypted once enough trusted individuals combine their decryption keys together.
+        This webpage encrypts messages that can be passed along in the event of death. This is done by <i>splitting</i> your decryption key into multiple parts. Your encrypted messages can only be decrypted once <i>enough</i> of the decryption keys are combined back together. For example, you can generate 10 different decryption keys such that any 3 decryption keys can be used to decrypt your message. This means that your message can only be decrypted once enough trusted individuals combine their decryption keys.
       </p>
       <p>
         To see an example of how this webpage works, click the
@@ -469,13 +469,12 @@ https://github.com/openpgpjs/openpgpjs
       </p>
 
       <p>
-        This webpage is entirely self contained, so it can be saved as a file for use offline.  Encrypted is handled using <a href="https://openpgpjs.org/">OpenPGP.js</a> and the decryption key is securly split using <a href="https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing">Shamir&apos;s Secret Sharing</a>.
+        This webpage is entirely self-contained, so it can be saved as a file for use offline. Encryption is handled using <a href="https://openpgpjs.org/">OpenPGP.js</a> and the decryption key is securely split using <a href="https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing">Shamir&apos;s Secret Sharing</a>.
       </p>
 
       <p>
         If you already have a decryption key and want to decrypt a message, go to the <a href="#decrypt">Decrypt Message</a> section below.
       </p>
-
 
       <center>
         <button type="button" onclick="example()" style='font-size: 20px; margin:10px; padding: 10px; width: 40%; font-weight: bold;'>Generate Example</button>
@@ -493,16 +492,15 @@ https://github.com/openpgpjs/openpgpjs
 
       <p><b>Public key used for <u>Encryption</u>:</b><br>
 
-        The Public Key can <i><b>only</b></i> be used to encrypt messages.  You <i><b>should</b></i> save this key somewhere safe, so that you can create more ecrypted messages in the future.  It safe to share this key with other people as it can not be used to decrypt messages.
+        The Public Key can <i><b>only</b></i> be used to encrypt messages. You <i><b>should</b></i> save this key somewhere safe so that you can create more encrypted messages in the future. It is safe to share this key with other people as it cannot be used to decrypt messages.
         <br>
-        To use the Public Key to encrypt a message, use the <a href="#encrypt">Encryption</a> section of this webpage below, or using <a href="https://gnupg.org/">PGP</a> software on your computer.
+        To use the Public Key to encrypt a message, use the <a href="#encrypt">Encryption</a> section of this webpage below, or use <a href="https://gnupg.org/">PGP</a> software on your computer.
         <br>
         <textarea id="public_key_gen" readonly cols=60 rows=10 autocomplete="off" spellcheck="false"></textarea>
       </p>
 
-
       <p>
-        <b>Private keys for <u>Decryption</u>:</b><br> The Private key are used to decrypt all messages.  Ideally, each of your trusted friends and family members will be given 1 of these keys.  Note, <i><u><b>anyone</b></u></i> who gets access to more than <b><span id="num_required_span">3</span></b> of these private keys (as configured above) can decrypt all messages.
+        <b>Private keys for <u>Decryption</u>:</b><br> The Private keys are used to decrypt all messages. Ideally, each of your trusted friends and family members will be given one of these keys. Note, <i><u><b>anyone</b></u></i> who gets access to more than <b><span id="num_required_span">3</span></b> of these private keys (as configured above) can decrypt all messages.
         <br>
         <ol id="private_keys">
           <li><input type="text" size=80 readonly /></li>
@@ -516,9 +514,9 @@ https://github.com/openpgpjs/openpgpjs
       <center><a name="encrypt"></a><h2>Encrypt Message</h2></center>
 
       <p><b>Public Key for Encryption:</b><br>
-        This encruption should come from the previous <a href="#generate">generate encryption key section</a>.<br>
+        This encryption key should come from the previous <a href="#generate">generate encryption key section</a>.<br>
         <textarea id="public_key" cols=60 rows=10 autocomplete="off" onfocus="this.value='';">-----BEGIN PGP PUBLIC KEY BLOCK-----
-Paste your public key here to encrypting a message.
+Paste your public key here to encrypt a message.
 
 If you do not already have a public key, you can generate
 a new key in the section above
@@ -528,8 +526,8 @@ a new key in the section above
       </p>
 
       <p><b>Message to Encrypt:</b><br>
-        Write the message that you want to encrypt.  You can write any message that you want.  The message can be as long as you want.  You can encrypt multiple messages, and even come back and encrypt more messages later as long as you save the public encryption key.<br>
-        <center><textarea id="to_encrypt" style='width: 95%;' rows=15  autocomplete="off">Example message to encrypt
+        Write the message that you want to encrypt. You can write any message that you want. The message can be as long as you want. You can encrypt multiple messages, and even come back and encrypt more messages later as long as you save the public encryption key.<br>
+        <center><textarea id="to_encrypt" style='width: 95%;' rows=15 autocomplete="off">Example message to encrypt
 
 This message can contain any content, for example you might encrypt your email password to be passed along.
 
@@ -538,7 +536,7 @@ You can come back and encrypt multiple messages as long as you still have the en
 
       <p><center><button type="button" style='font-weight: bold; font-size: 20px; width: 40%; margin:10px; padding: 10px;' onclick="encrypt()">Encrypt message</button></center></p>
 
-      <p><b>Encrypted Message:</b> <br> This is the encrypted message.  You must make sure that there is some way this message is shared to your trusted friends and family members.  This message can <i><b>only</b></i> be decrypted when enough of the decryption keys (generated above) are combined together.  As such, it is safe to share with all of your trusted individuals.  For example, you might consider emailing the encrypted message to all of your trusted individuals, or saving the encrypted messages into a shared document.<br>
+      <p><b>Encrypted Message:</b> <br> This is the encrypted message. You must make sure that there is some way this message is shared with your trusted friends and family members. This message can <i><b>only</b></i> be decrypted when enough of the decryption keys (generated above) are combined. As such, it is safe to share with all of your trusted individuals. For example, you might consider emailing the encrypted message to all of your trusted individuals, or saving the encrypted messages into a shared document.<br>
         <textarea id="encrypted" readonly cols=60 rows=10 autocomplete="off" onclick="this.select();"></textarea>
       </p>
 
@@ -549,8 +547,8 @@ You can come back and encrypt multiple messages as long as you still have the en
       <p><b>Decryption Keys:</b>
         <br>
         These decryption keys should have been provided to you by the individual
-        who has encrypted their messages.  You will need to collect multiple
-        decryption keys before you can decrypt any  messages.
+        who has encrypted their messages. You will need to collect multiple
+        decryption keys before you can decrypt any messages.
         <br><br>
         Paste in your decryption keys here:
         <ol id="decryption_keys">
@@ -558,7 +556,7 @@ You can come back and encrypt multiple messages as long as you still have the en
           <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
           <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
         </ol>
-        <button type="button" onclick="add_decrypt_key()">Add addition decryption key <b>+</b></button><br>
+        <button type="button" onclick="add_decrypt_key()">Add additional decryption key <b>+</b></button><br>
         <div id="decrypt_key_status"></div>
       </p>
 
@@ -585,9 +583,7 @@ Paste your encrypted message here
           document.write('<span id="forkongithub"><a href="https://github.com/in-event-of-death/v1/">Fork me on GitHub</a></span>')
     </script>
 
-
     <script src="openpgp.min.js"></script>
-
 
   </body>
 </html>
