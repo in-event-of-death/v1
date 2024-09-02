@@ -1,9 +1,42 @@
+<!--
+Created By Matthew Francis-Landau (https://matthewfl.com)
+Source code available at https://github.com/in-event-of-death/v1
+
+MIT License
+
+Copyright (c) 2023 Matthew Francis-Landau
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+OpenPGP.js (which is included in this program) is licensed under LGPGv3
+https://github.com/openpgpjs/openpgpjs
+-->
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Crypto test</title>
-  <script>
-    // primes used for Shamir's Secret Sharing method
+    <title>Encrypted Messages for the Event of Death</title>
+    <script>
+    if(location.protocol === 'http:') {
+        location.protocol = 'https:'; // the crypto APIs require https
+    }
+    // primes used for Shamir Secret Sharing method
     const large_primes = [
         // generated using `openssl prime -generate -bits XXXX`
         26013800316714693659487360106106576859446408140997727416684553647485913737527506224154159131021149031471925848188633045078893861608747018494713017361294680716680118653824608236875958327849429464985041509482020024640031860838265292357141341135797263686786173873087642663969196834962111089230588045539441312239718192315305970193707150287182381185472989128205869996790062835198989400329480521790509433619234601525286972527863796466644417099290273737897696408900798080603049307089600914440953002542676566189811596585259202284000341527357607212326209139406647000473009380221243221069300299351304668072790318472314168860759n,
@@ -13,8 +46,6 @@
         1067145027806771896736348885201650520217682536144480054962414237260675149345425580833604638553254555553450516905594270310215323220554955743166747664212810667924739323286132444586240362334974379521147620858785277986492501704235616109075864067774820029277982307910523435598035747995561704315623170146250954311839861990164148352059696244492499350745811714406873325781200666772436973779301867636130559940380214236807863978216034608177339239785157816672248111313127934009323837209046997706736924517668495975505109434485814738420126604281177486651942695134987862996087141461138985819668776634974521002672548209946493421911244257865273713298997478148275323403478140262314677990602905369872165803312468468196682089866320691811138046397258988457087599252348435749995677274830713978400396535341627797619039747345374158897705020261205844349478572717354515895071536910728957016820340878297419274409311876169531912679029965314409377133968232741777449081225446017422780740487500490302760038171852724526896870578871873965885630345326776370465627249974269058549505437624688835806153923199404004072461774279546739933771154130132197816275614323408701079856017813257982040041760737088759156983414150654480336132277672003225738445285430047413304772618293704912659529766597970879313533992954211080398555794343386696810547300820057892472631379493468492846464793101134340436484985900056931089743386606670422620801925011810627958444477076039156986802351793781845354101186374167815407429459530425468169262678107647879548917515619061140983268922899874767217134251427822634346444954530041777889149673629521927949770953118691529003011591473442997897411242514693507582583074997782841646405446079405629601243085143096158590569547732987594487737452587151639703336174965339982813747174020001083084219324686589921118108344654274776002924949699514759820503910984443396225085556329453262160312195475332365052302858783105407745663740585803098305023249756111368049950163462388385362335937010786959132576587845583579588056574658340601882631020529595113806813975952098429751621777437426581760176612378200144749546283222278632927625036689224728552301833015747115546334419012004870091311801727234396627282154659341220005712383030184513423146821824749625141220375926274254838083359422096107376456254874227230786791473401400818685683588726561134800854232826696808345124633056379503082658309023861152443764421786399116516058974263475670452557479495335125983247709460380575872076251131971902570828620338999143577n
     ];
 
-    // this is used to encode big nums into json, so it isn't printed directly
-    //const string_encoding = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
     const string_encoding = ' "+,/0123456789:=ABCDEFGHIJKLMNOPQRSTUVWXYZ\\abcdefghijklmnopqrstuvwxyz{}';
     const base58_encoding = '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
 
@@ -47,7 +78,7 @@
 
     function bigintToUint8(a) {
         let num_bytes = 1;
-        while(a > (1n << BigInt(num_bytes*8)))
+        while(a >= (1n << BigInt(num_bytes*8)))
             num_bytes++;
         let r = new Uint8Array(num_bytes);
         for(let i = 0; i < num_bytes; i++) {
@@ -71,7 +102,7 @@
             return mod - inverse(-v, mod);
         } else {
             let [g, x, y] = extended_gcd(v, mod);
-            if(g != 1n) alert('no inverse');
+            if(g != 1n) { alert('no inverse'); return; }
             if(x < 0n)
                 return (mod + x) % mod;
             else
@@ -79,7 +110,7 @@
         }
     }
 
-    // for implementing Shamir's Secret Sharing
+    // for implementing Shamir Secret Sharing
     function evaluatePolynomialAtPoint(poly, mod, x) {
         let r = 0n;
         for(let i = 0; i < poly.length; i++) {
@@ -108,10 +139,17 @@
         return ('x' in x) && ('y' in x) && ('fingerprint' in x) && ('mod' in x) && ('required' in x) && ('name' in x) && ('version' in x) && x.version == 1 && x.hash == await hash(x.y + x.x + x.mod);
     }
 
+    function generate_key_inp_change() {
+        document.getElementById("public_key_gen").disabled = true;
+        let ks = document.getElementsByName('gen_decrypt_key');
+        for(let i = 0; i < ks.length; i++) ks[i].disabled = true;
+        document.getElementById("copy_private").disabled=true;
+    }
+
     async function generate_key() {
         const num_pub_generate = document.getElementById("number_private_generate").value * 1;
         const num_required = document.getElementById("number_private_required").value * 1;
-        const name = document.getElementById("user_name").value
+        const name = document.getElementById("user_name").value;
 
         if(num_pub_generate < num_required) {
             alert('The number of public keys that are to be generated is less than the number of public keys which will be required for decryption\nThis will not work');
@@ -119,11 +157,10 @@
         }
 
         const { privateKey, publicKey } = await openpgp.generateKey({
-            type: 'ecc', // Type of the key, defaults to ECC
-            curve: 'curve25519', // ECC curve name, defaults to curve25519
-            userIDs: [{ name: "Key for "+name+" in the event of death",  email: name.replace(/[^A-Za-z0-9]/g, '-')+"@in-event-of-death.none" }],
+            type: 'ecc',
+            curve: 'curve25519',
+            userIDs: [{ name: "Key for "+name+" in the event of death",  email: name.replace(/[^A-Za-z0-9]/g, '-')+"@in-event-of-death.github.io" }],
             format: 'object'
-            //format: 'armored' // output key format, defaults to 'armored' (other options: 'binary' or 'object')
         });
         const pk = publicKey.armor();
         const priv = privateKey.write();
@@ -135,6 +172,7 @@
         //document.getElementById("private_key").value = privateKey;
         document.getElementById("public_key_gen").value = pk;
         document.getElementById("public_key_gen").rows = pk.split('\n').length + 1;
+        document.getElementById("public_key_gen").disabled = false;
         document.getElementById("public_key").value = pk;
 
         let poly_values = [[0n, uint8ToBigint(priv)]];
@@ -154,10 +192,8 @@
         let pk_list = document.getElementById('private_keys');
         pk_list.innerHTML = '';
 
-        location.hash = '';
-        const key_prefix= 'https://in-event-of-death.github.io/v1/#';
         for(let i = 0; i < num_pub_generate; i++) {
-            let x = BigInt(i)*1191531196035921311916814842367n + 1196999169309667173465223891789n + BigInt(num_required);
+            let x = BigInt(i+1)*1000000n + BigInt(num_required);
             if(x == 0n) x = 123n; // zero encodes the secret key, so we do not want to generate its value
             let y = evaluatePolynomialAtPoint(poly_values, mod, x);
             let k = {
@@ -176,29 +212,62 @@
             inp.type = 'text';
             inp.size = 80;
             inp.readOnly = true;
-            inp.value = key_prefix + s;
+            inp.value = 'https://in-event-of-death.github.io/v1/#' + s;
             inp.name = 'gen_decrypt_key';
-            inp.onclick = function () { this.select(); }
+            inp.onclick = function () { this.select(); };
             let li = document.createElement('li');
             li.appendChild(inp);
             pk_list.appendChild(li);
         }
+        document.getElementById("copy_private").disabled=false;
+    }
+
+    function copy_private_keys() {
+        const num_pub_generate = document.getElementById("number_private_generate").value * 1;
+        const num_required = document.getElementById("number_private_required").value * 1;
+        const name = document.getElementById("user_name").value;
+        let s = 'Encryption key for '+name+'\n\n';
+        s += document.getElementById('public_key_gen').value;
+        s += '\n\n\n\n';
+        s += 'Private decryption keys for '+name+'\nAny '+num_required+' decryption keys when combined together at https://in-event-of-death.github.io/v1/ can be used to decrypt all messages'
+        const genk = document.getElementsByName('gen_decrypt_key');
+        for(let i = 0; i < genk.length; i++) {
+            s += '\n\n';
+            s += (i + 1) + '. ' + genk[i].value;
+        }
+        navigator.clipboard.writeText(s);
+        alert('All keys copied to clipboard')
     }
 
     async function encrypt() {
+        document.getElementById("encrypted").value = '';
         const publicKey = document.getElementById("public_key").value;
+        if(!publicKey || publicKey.indexOf('Paste your public key here') != -1) {
+            alert('[ERROR]\n\nPlease paste in a public key to encrypt a message.\n\n\nIf you do not have a public key, generate a public key by clicking the [Generate Encryption Key] button');
+            location.href = '#generate';
+            return;
+        }
+        let key;
+        try {
+            key = await openpgp.readKey({ armoredKey: publicKey });
+        } catch (e) {
+            alert('Encryption key is corrupted, unable to encrypt message');
+            return;
+        }
 
         const encrypted = await openpgp.encrypt({
             message: await openpgp.createMessage({ text: document.getElementById("to_encrypt").value }),
-            encryptionKeys: await openpgp.readKey({ armoredKey: publicKey }),
+            encryptionKeys: key,
             format: 'armored'
         });
 
-        document.getElementById("encrypted").value = encrypted;
+        const with_comment = encrypted.replace('-----BEGIN PGP MESSAGE-----', '-----BEGIN PGP MESSAGE-----\nComment: Decrypt this message at https://in-event-of-death.github.io/v1/')
+
+        document.getElementById("encrypted").value = with_comment;
     }
 
     function load_json(s) {
-        s = s.replace(/^(.+#)/, '').replace(new RegExp('[^'+base58_encoding+']', 'g'), '')
+        s = s.replace(/^(.+#)/, '').replace(new RegExp('[^'+base58_encoding+']', 'g'), '');
         return JSON.parse(encode_bigint(string_encoding, decode_bigint(base58_encoding, s)));
     }
 
@@ -232,7 +301,7 @@
         }
 
         if(private_keys.length < private_keys[0].required) {
-            alert('Not enough private keys, require '+private_keys[0].required+' keys to decrypt the data');
+            alert('Not enough private keys loaded, require '+private_keys[0].required+' keys to decrypt the message');
             return;
         }
 
@@ -276,14 +345,19 @@
         let has_x = {};
         let keys = document.getElementsByName('decrypt_key');
         let has_invalid = false;
+        let has_duplicate = false;
         for(let i = 0; i < keys.length; i++) {
             try {
                 let v = keys[i].value;
                 if(v) {
                     let k = load_json(v);
-                    if((await is_key(k)) && !(k.x in has_x)) {
-                        private_keys.push(k);
-                        has_x[k.x] = true;
+                    if(await is_key(k)) {
+                        if(k.x in has_x) {
+                            has_duplicate = true;
+                        } else {
+                            private_keys.push(k);
+                            has_x[k.x] = true;
+                        }
                     }
                 }
             } catch (e) {
@@ -291,15 +365,19 @@
             }
         }
         if(private_keys.length == 0) {
-            document.getElementById('decrypt_key_status').innerHTML = has_invalid ? '<span style="color:red"><b>Encryption key is corrupted</b></span>' : '';
+            document.getElementById('decrypt_key_status').innerHTML = has_invalid ? '<span style="color:red"><b>Decryption key is corrupted</b></span>' : '';
             return;
         }
         let message = 'Decryption keys for <i><b>'+atob(private_keys[0].name)+'</b></i> loaded';
         let error = '';
 
+        if(has_duplicate) {
+            error = '<br><span style="color:red">An decryption key is pasted in twice, each key can only be used once, please combine your decryption key with other decryption keys to decrypt messages</span>';
+        }
+
         for(let i = 1; i < private_keys.length; i++) {
             if(private_keys[i].fingerprint != private_keys[0].fingerprint) {
-                error = '<br><span style="color:red"><b>Different encryption keys are mixed together.  This will not work</b></span>';
+                error = '<br><span style="color:red"><b>Different decryption keys are mixed together.  This will not work</b></span>';
                 break;
             }
         }
@@ -326,11 +404,9 @@
         on_decrypt_key_change();
     }
 
-    if(location.protocol === 'http:') {
-        location.protocol = 'https:'; // the crypto APIs require https
-    }
-
     async function example() {
+        let m = document.getElementById("to_encrypt"), m2 = 'Example message to encrypt generated at '+(new Date())
+        m.value = m.value.replace(/Example message to encrypt/, m2) || m2;
         await generate_key();
         await encrypt();
         const num_required = document.getElementById("number_private_required").value * 1;
@@ -353,139 +429,155 @@
             width:960px;
             margin:auto;
             padding: 10px;
-            background-color: #445;
+            background-color: #334;
         }
         #content {
             background-color:#fff;
             padding: 10px;
             border-radius: 5px;
         }
+    }
+    @media (min-width: 1060px) {
         #forkongithub a{background:#c00;color:#fff;text-decoration:none;font-family:arial,sans-serif;text-align:center;font-weight:bold;padding:5px 40px;font-size:1rem;line-height:2rem;position:relative;transition:0.5s;}#forkongithub a:hover{background:#c11;color:#fff;}#forkongithub a::before,#forkongithub a::after{content:"";width:100%;display:block;position:absolute;top:1px;left:0;height:1px;background:#fff;}#forkongithub a::after{bottom:1px;top:auto;}@media screen and (min-width:800px){#forkongithub{position:absolute;display:block;top:0;right:0;width:200px;overflow:hidden;height:200px;z-index:9999;}#forkongithub a{width:200px;position:absolute;top:60px;right:-60px;transform:rotate(45deg);-webkit-transform:rotate(45deg);-ms-transform:rotate(45deg);-moz-transform:rotate(45deg);-o-transform:rotate(45deg);box-shadow:4px 4px 10px rgba(0,0,0,0.8);}}
     }
-    @media (max-width: 970px) {
+    @media (max-width: 1060px) {
         #forkongithub { display: none; }
     }
     body {
-        font: 13px/1.5 'Helvetica Neue',Arial,'Liberation Sans',FreeSans,sans-serif;
+        font: 16px/1.5 'Helvetica Neue',Arial,'Liberation Sans',FreeSans,sans-serif;
+        text-align: justify;
+        line-height: 1.4;
     }
+    h1 { font-size: 40px; }
+    h2 { font-size: 35px; }
+    .inp { font-size: 16px; }
+    button { font-size: 16px; }
   </style>
   </head>
 
   <body>
     <div id="content">
+      <center><a name="description"></a><h1>Encrypted Messages for the Event of Death</h1></center>
+      <noscript><div style="font-size:50px; color:red; text-align:center;">Javascript is required!!!</div></noscript>
+      <p>
+        This webpage encrypt messages that can be passed along in the event of death.  This is done by <i>splitting</i> your decryption key into multiple parts.  Your encrypted messages can only be decrypted once <i>enough</i> of the decryption keys are combined back together.  For example, you can generate 10 different decryption keys such that any 3 decryption keys can be used to decrypt your message.  This means that your message can only be decrypted once enough trusted individuals combine their decryption keys together.
+      </p>
+      <p>
+        To see an example of how this webpage works, click the
+        <button type="button" onclick="example()" style='font-weight: bold; font-size:14px;'>Generate Example</button>
+        button.
+      </p>
 
-    <center><a name="description" /><h1>Description</h1></a></center>
+      <p>
+        This webpage is entirely self contained, so it can be saved as a file for use offline.  Encrypted is handled using <a href="https://openpgpjs.org/">OpenPGP.js</a> and the decryption key is securly split using <a href="https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing">Shamir&apos;s Secret Sharing</a>.
+      </p>
 
-    <p>
-      This is designed to encrypt messages which can be passed along in the
-      event of death.  This webpage is entirely self contained, which means that
-      it can be used offline and saved to a file.  This webpage generates
-      encryption keys using <a href="https://openpgpjs.org/">OpenPGP.js</a> and
-      <a href="https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing">Shamir's
-      Secret Sharing</a>.  This means that a your data is encrypted such that it
-      requires <i>multiple</i> description keys to descrypt a message.  For
-      example, you can generate 10 encryption keys such that any 3 encryption
-      keys can be used to decrypt the data.
-    </p>
-
-    <p>
-      To see an example of how this works, click the
-      <button type="button" onclick="example()">Show Example</button>
-      button.
-    </p>
-
-    <p>
-      If you have a decryption key and want to decrypt a message, go to
-      the <a href="#decrypt">Decrypt Message</a> section below.
-    </p>
+      <p>
+        If you already have a decryption key and want to decrypt a message, go to the <a href="#decrypt">Decrypt Message</a> section below.
+      </p>
 
 
-    <button type="button" onclick="example()">Show Example</button>
+      <center>
+        <button type="button" onclick="example()" style='font-size: 20px; margin:10px; padding: 10px; width: 40%; font-weight: bold;'>Generate Example</button>
+      </center>
 
-    <hr>
-    <center><a name="generate" /><h1>Generate Encryption Key</h1></center>
+      <hr>
+      <center><a name="generate"></a><h2>Generate Encryption Key</h2></center>
 
-    <p>Name: <input type="text" value="John Doe" id="user_name"></p>
-    <p>Number of private keys to generate: <input type="number" value="10" id="number_private_generate"></p>
-    <p>Number of private keys required to decrypt: <input type="number" value="3" id="number_private_required"></p>
-    <p><button type="button" onclick="generate_key()">Generate Encryption Key</button></p>
+      <p>Your Name: <input type="text" value="John Doe" id="user_name" class="inp" onchange="generate_key_inp_change()"></p>
+      <p>Number of decryption keys to generate: <input type="number" value="10" id="number_private_generate" class="inp" style='width: 70px;' onchange="generate_key_inp_change()"></p>
+      <p>Number of decryption keys required to decrypt all messages: <input type="number" value="3" id="number_private_required" class="inp" style='width: 70px;' onchange="generate_key_inp_change()"></p>
+      <p><center><button type="button" onclick="generate_key()" style='font-weight: bold; font-size: 20px; margin:10px; padding:10px; width: 40%'>Generate Encryption Key</button></center></p>
 
-    <br>
-
-    <p><b>Public key used for encryption:</b>
-      <br>You should save the public key somewhere safe.  The Public Key
-      can <i>only</i> be used to encrypt messages.  You can encrypt messages in
-      the <a href="#encrypt">Encryption section</a> of this webpage or by
-      using <a href="https://gnupg.org/">PGP</a> software on your computer. <br>
-      <textarea id="public_key_gen" readonly cols=60 rows=10 autocomplete="off"></textarea>
-    </p>
-
-
-    <p>
-      <b>Private keys for decryption:</b><br> The Private key can be used to
-      decrypt a message.  Ideally, each trusted individual will be given 1 of
-      these keys.  Note, <i>anyone</i> who gets access to more
-      than <b><span id="num_required_span">3</span></b> of these private keys
-      (as configured above) can decrypt all of your messages.
-
-      <!-- These keys should be distributed such that 1 key is provide to each individual.  As configured above, any <b><span id="num_required_span">3</span></b> of these keys are required to decrypt your data. -->
       <br>
-      <ol id="private_keys">
-        <li><input type="text" size=80 readonly /></li>
-        <li><input type="text" size=80 readonly /></li>
-      </ol>
-    </p>
 
-    <hr>
-    <center><a name="encrypt" /><h1>Encrypt Message</h1></center>
+      <p><b>Public key used for <u>Encryption</u>:</b><br>
 
-    <p><b>Public Key used for Encryption:</b><br>
-      <textarea id="public_key" cols=60 rows=10 autocomplete="off"></textarea>
-    </p>
-
-    <p><b>Message to Encrypt:</b><br>
-<textarea id="to_encrypt" cols=60 rows=10  autocomplete="off">Example message to encrypt
-
-This message can contain any content, for exmaple you might encrypt your email password to be passed along.
-
-You can come back and encrypt multiple messages as long as you still have the encryption key.
-      </textarea>
-    </p>
-    <p><button type="button" onclick="encrypt()">Encrypt message</button></p>
-
-    <p><b>Encrypted data:</b> <br>
-      <textarea id="encrypted" readonly cols=60 rows=10 autocomplete="off"></textarea>
-    </p>
+        The Public Key can <i><b>only</b></i> be used to encrypt messages.  You <i><b>should</b></i> save this key somewhere safe, so that you can create more ecrypted messages in the future.  It safe to share this key with other people as it can not be used to decrypt messages.
+        <br>
+        To use the Public Key to encrypt a message, use the <a href="#encrypt">Encryption</a> section of this webpage below, or using <a href="https://gnupg.org/">PGP</a> software on your computer.
+        <br>
+        <textarea id="public_key_gen" readonly cols=60 rows=10 autocomplete="off" spellcheck="false"></textarea>
+      </p>
 
 
-    <hr>
-    <center><a name="decrypt" /><h1>Decrypt Message</h1></center>
+      <p>
+        <b>Private keys for <u>Decryption</u>:</b><br> The Private key are used to decrypt all messages.  Ideally, each of your trusted friends and family members will be given 1 of these keys.  Note, <i><u><b>anyone</b></u></i> who gets access to more than <b><span id="num_required_span">3</span></b> of these private keys (as configured above) can decrypt all messages.
+        <br>
+        <ol id="private_keys">
+          <li><input type="text" size=80 readonly /></li>
+          <li><input type="text" size=80 readonly /></li>
+          <li><input type="text" size=80 readonly /></li>
+        </ol>
+        <center><button onclick="copy_private_keys()" disabled id="copy_private">Copy all Encryption and Decryption Keys</button></center>
+      </p>
 
-    <p>Decryption Keys:
-      <ol id="decryption_keys">
-        <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
-        <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
-        <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
-      </ol>
-      <button type="button" onclick="add_decrypt_key()">Add addition decryption Key <b>+</b></button><br>
-      <div id="decrypt_key_status"></div>
-    </p>
+      <hr>
+      <center><a name="encrypt"></a><h2>Encrypt Message</h2></center>
 
-    <p>Encrypted message:<br>
-      <textarea autocomplete="off" id="to_decrypt" cols=60 rows=10 onfocus="this.value='';" spellcheck="false">-----BEGIN PGP MESSAGE-----
+      <p><b>Public Key for Encryption:</b><br>
+        This encruption should come from the previous <a href="#generate">generate encryption key section</a>.<br>
+        <textarea id="public_key" cols=60 rows=10 autocomplete="off" onfocus="this.value='';">-----BEGIN PGP PUBLIC KEY BLOCK-----
+Paste your public key here to encrypting a message.
+
+If you do not already have a public key, you can generate
+a new key in the section above
+...
+-----END PGP PUBLIC KEY BLOCK-----
+</textarea>
+      </p>
+
+      <p><b>Message to Encrypt:</b><br>
+        Write the message that you want to encrypt.  You can write any message that you want.  The message can be as long as you want.  You can encrypt multiple messages, and even come back and encrypt more messages later as long as you save the public encryption key.<br>
+        <center><textarea id="to_encrypt" style='width: 95%;' rows=15  autocomplete="off">Example message to encrypt
+
+This message can contain any content, for example you might encrypt your email password to be passed along.
+
+You can come back and encrypt multiple messages as long as you still have the encryption key.</textarea></center>
+      </p>
+
+      <p><center><button type="button" style='font-weight: bold; font-size: 20px; width: 40%; margin:10px; padding: 10px;' onclick="encrypt()">Encrypt message</button></center></p>
+
+      <p><b>Encrypted Message:</b> <br> This is the encrypted message.  You must make sure that there is some way this message is shared to your trusted friends and family members.  This message can <i><b>only</b></i> be decrypted when enough of the decryption keys (generated above) are combined together.  As such, it is safe to share with all of your trusted individuals.  For example, you might consider emailing the encrypted message to all of your trusted individuals, or saving the encrypted messages into a shared document.<br>
+        <textarea id="encrypted" readonly cols=60 rows=10 autocomplete="off" onclick="this.select();"></textarea>
+      </p>
+
+
+      <hr>
+      <center><a name="decrypt"></a><h2>Decrypt Message</h2></center>
+
+      <p><b>Decryption Keys:</b>
+        <br>
+        These decryption keys should have been provided to you by the individual
+        who has encrypted their messages.  You will need to collect multiple
+        decryption keys before you can decrypt any  messages.
+        <br><br>
+        Paste in your decryption keys here:
+        <ol id="decryption_keys">
+          <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
+          <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
+          <li><input name="decrypt_key" type="text" size=80 onchange="on_decrypt_key_change()" /></li>
+        </ol>
+        <button type="button" onclick="add_decrypt_key()">Add addition decryption key <b>+</b></button><br>
+        <div id="decrypt_key_status"></div>
+      </p>
+
+      <p><b>Encrypted message:</b><br>
+        You should have been provided an encrypted message by the individual who originally gave you the decryption key:
+        <br>
+        <textarea autocomplete="off" id="to_decrypt" cols=60 rows=10 onfocus="this.value='';" spellcheck="false">-----BEGIN PGP MESSAGE-----
 Paste your encrypted message here
 ....
------END PGP MESSAGE-----
-</textarea>
-    </p>
+-----END PGP MESSAGE-----</textarea>
+      </p>
 
-    <p><button type="button" onclick="decrypt()">Decrypt message</button></p>
+      <p><center><button type="button" onclick="decrypt()" style='font-size: 20px; margin:10px; padding: 10px; width: 40%; font-weight: bold;'>Decrypt message</button></center></p>
 
-    <p>Decrypted message:<br>
-      <textarea autocomplete="off" id="decrypted" readonly cols=60 rows=10></textarea>
-    </p>
+      <p><b>Decrypted Message:</b><br>
+        <center><textarea autocomplete="off" id="decrypted" readonly style='width: 95%;' rows=15 ></textarea></center>
+      </p>
 
-    <footer><center>Created By <a href="https://matthewfl.com">Matthew Francis-Landau</a> 2023</center></footer>
+      <footer><center>Created By <a href="https://matthewfl.com">Matthew Francis-Landau</a> (2024)</center></footer>
     </div>
 
     <script>
