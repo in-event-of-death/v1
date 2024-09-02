@@ -167,9 +167,7 @@ https://github.com/openpgpjs/openpgpjs
         const fingerprint = publicKey.getFingerprint();
         //debugger;
 
-
         document.getElementById("num_required_span").innerHTML = num_required;
-        //document.getElementById("private_key").value = privateKey;
         document.getElementById("public_key_gen").value = pk;
         document.getElementById("public_key_gen").rows = pk.split('\n').length + 1;
         document.getElementById("public_key_gen").disabled = false;
@@ -372,7 +370,7 @@ https://github.com/openpgpjs/openpgpjs
         let error = '';
 
         if(has_duplicate) {
-            error = '<br><span style="color:red">An decryption key is pasted in twice, each key can only be used once, please combine your decryption key with other decryption keys to decrypt messages</span>';
+            error = '<br><span style="color:red">A decryption key is pasted in twice, each key can only be used once, please combine your decryption key with other decryption keys to decrypt messages</span>';
         }
 
         for(let i = 1; i < private_keys.length; i++) {
@@ -400,6 +398,7 @@ https://github.com/openpgpjs/openpgpjs
             let v = document.getElementsByName('decrypt_key');
             for(let a in v) a.value = '';
             v[0].value = location.href;
+            document.getElementsByName("decrypt")[0].scrollIntoView({behavior: "smooth"});
         } catch(e) {}
         on_decrypt_key_change();
     }
